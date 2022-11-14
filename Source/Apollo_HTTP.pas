@@ -110,9 +110,10 @@ begin
   FIdHTTP.Request.AcceptEncoding := 'gzip, deflate, br';
   FIdHTTP.Request.CacheControl := 'no-cache';
 
-  //FIdSSLIOHandlerSocketOpenSSL := TIdSSLIOHandlerSocketOpenSSL.Create;
-  //FIdSSLIOHandlerSocketOpenSSL.SSLOptions.SSLVersions := [sslvSSLv23];
-  //FIdHTTP.IOHandler := FIdSSLIOHandlerSocketOpenSSL;
+  FIdSSLIOHandlerSocketOpenSSL := TIdSSLIOHandlerSocketOpenSSL.Create;
+  FIdSSLIOHandlerSocketOpenSSL.SSLOptions.Mode := sslmClient;
+  FIdSSLIOHandlerSocketOpenSSL.SSLOptions.Method := sslvTLSv1_2;
+  FIdHTTP.IOHandler := FIdSSLIOHandlerSocketOpenSSL;
 
   FIdCompressorZLib := TIdCompressorZLib.Create(nil);
   FIdHTTP.Compressor := FIdCompressorZLib;
