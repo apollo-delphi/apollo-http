@@ -4,17 +4,23 @@ interface
 
 uses
   IdCompressorZLib,
+  IdCookie,
+  IdCookieManager,
   IdHTTP,
   IdSSLOpenSSL,
+  IdOpenSSLIOHandlerClient,
   System.Generics.Collections;
 
 type
+
   THTTP = class
   private
     FCustomHeaders: TDictionary<string, string>;
     FIdCompressorZLib: TIdCompressorZLib;
+    FIdCookieManager: TIdCookieManager;
     FIdHTTP: TIdHTTP;
-    FIdSSLIOHandlerSocketOpenSSL: TIdSSLIOHandlerSocketOpenSSL;
+    FIdOpenSSLIOHandlerClient: TIdOpenSSLIOHandlerClient;
+    function GetCookies: TArray<TIdCookie>;
     procedure ApplyCustomHeaders;
     procedure FreeHTTP;
     procedure InitHTTP;
@@ -25,6 +31,7 @@ type
     procedure SetCustomHeader(const aKey, aValue: string);
     constructor Create;
     destructor Destroy; override;
+    property Cookies: TArray<TIdCookie> read GetCookies;
   end;
 
   TRESTClient = class(THTTP)
@@ -84,11 +91,14 @@ begin
   if Assigned(FIdHTTP) then
     FreeAndNil(FIdHTTP);
 
-  if Assigned(FIdSSLIOHandlerSocketOpenSSL) then
-    FreeAndNil(FIdSSLIOHandlerSocketOpenSSL);
+  if Assigned(FIdOpenSSLIOHandlerClient) then
+    FreeAndNil(FIdOpenSSLIOHandlerClient);
 
   if Assigned(FIdCompressorZLib) then
     FreeAndNil(FIdCompressorZLib);
+
+  if Assigned(FIdCookieManager) then
+    FreeAndNil(FIdCookieManager);
 end;
 
 function THTTP.Get(const aURL: string): string;
@@ -96,27 +106,40 @@ begin
   Result := FIdHTTP.Get(aURL);
 end;
 
+function THTTP.GetCookies: TArray<TIdCookie>;
+var
+  i: Integer;
+begin
+  Result := [];
+
+  for i := 0 to FIdCookieManager.CookieCollection.Count - 1 do
+    Result := Result + [FIdCookieManager.CookieCollection.Cookies[i]];
+end;
+
 procedure THTTP.InitHTTP;
 begin
   FreeHTTP;
 
   FIdHTTP := TIdHTTP.Create;
-  FIdHTTP.HandleRedirects := True;
-
-  FIdHTTP.Request.UserAgent := 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36';
+  FIdHTTP.HandleRedirects := False;
+  FIdHTTP.Request.UserAgent := 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36';
   FIdHTTP.Request.Connection := 'keep-alive';
-  FIdHTTP.Request.Accept := 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8';
-  FIdHTTP.Request.AcceptLanguage := 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,be;q=0.6,pl;q=0.5';
+  FIdHTTP.Request.Accept := 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
+  FIdHTTP.Request.AcceptLanguage := 'en-US,en;q=0.9,ru;q=0.8,be;q=0.7,pl;q=0.6,uk;q=0.5';
   FIdHTTP.Request.AcceptEncoding := 'gzip, deflate, br';
   FIdHTTP.Request.CacheControl := 'no-cache';
+  FIdHTTP.Request.Pragma := 'no-cache';
 
-  FIdSSLIOHandlerSocketOpenSSL := TIdSSLIOHandlerSocketOpenSSL.Create;
-  FIdSSLIOHandlerSocketOpenSSL.SSLOptions.Mode := sslmClient;
-  FIdSSLIOHandlerSocketOpenSSL.SSLOptions.Method := sslvTLSv1_2;
-  FIdHTTP.IOHandler := FIdSSLIOHandlerSocketOpenSSL;
+  FIdOpenSSLIOHandlerClient := TIdOpenSSLIOHandlerClient.Create;
+  FIdOpenSSLIOHandlerClient.Options.VerifyServerCertificate := False;
+  FIdHTTP.IOHandler := FIdOpenSSLIOHandlerClient;
 
   FIdCompressorZLib := TIdCompressorZLib.Create(nil);
   FIdHTTP.Compressor := FIdCompressorZLib;
+
+  FIdCookieManager := TIdCookieManager.Create(nil);
+  FIdHTTP.CookieManager := FIdCookieManager;
+  FIdHTTP.AllowCookies := True;
 
   ApplyCustomHeaders;
 end;
